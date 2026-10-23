@@ -1,12 +1,11 @@
 # TaskFlow API
 
-A small task management REST API for learning Java and Spring Boot. Create, read,
-update, delete, and filter tasks, with optional due dates and automatic timestamps.
-Swagger UI lets you explore and call the endpoints in a browser.
-The project uses a Controller → Service → Repository
-structure, with no authentication, frontend, or microservices.
+A task management REST API built with Java and Spring Boot. Supports task CRUD,
+status and priority filters, optional due dates, and automatic timestamps.
+The API uses a Controller → Service → Repository architecture and includes
+interactive documentation through Swagger UI.
 
-## Stack
+## Tech stack
 
 - Java 21
 - Spring Boot 3.5.16
@@ -16,16 +15,11 @@ structure, with no authentication, frontend, or microservices.
 - Springdoc OpenAPI 2.8.17 for Swagger UI
 - JUnit 5.14.4, Mockito, and Spring MockMvc for tests
 
-Spring Boot was changed from 4.1.1 to 3.5.16 to meet this project's JUnit 5
-requirement: the Boot 4.1.1 test stack requires a JUnit 6 API. Springdoc 2.8.x is
-the documented match for Boot 3.5.x ([compatibility table](https://springdoc.org/v2/#what-is-the-compatibility-matrix-of-springdoc-openapi-with-spring-boot)).
-
 ## Run locally
 
-Install **JDK 21** (recommended), Git, and curl. Check `java -version`.
-The project targets Java 21; a newer compatible JDK can also compile it.
-Set `JAVA_HOME` to your JDK directory if necessary. You do not need to install Maven or a database.
-The first Wrapper run needs internet access to download Maven and dependencies.
+Requirements: **JDK 21**, Git, and curl. Set `JAVA_HOME` if needed and check
+`java -version`. Maven and H2 are provided by the project; no external database
+is required. The first Maven Wrapper run downloads Maven and dependencies.
 
 Clone the repository, then start the application. These commands work in Fish and Bash:
 
@@ -97,15 +91,15 @@ may leave `updatedAt` unchanged.
 | `DELETE` | `/api/tasks/{id}` | `204 No Content`, empty body |
 
 `GET /api/tasks` accepts optional `status` and `priority` query parameters.
-When both are provided, a task must match **both**. No matches returns `[]`,
-not an error. The list is deliberately unpaginated for this small project.
+When both are provided, a task must match **both**. No matches returns `[]`.
+Results are not paginated.
 
 `PUT` replaces all editable fields: send `title`, `status`, and `priority`
-every time. Omitting `description` or `dueDate` (or sending `null`) clears that field. Updating a
-missing task returns `404`; it does not create a task. Deleting a missing or
+every time. Omitting `description` or `dueDate` (or sending `null`) clears that field.
+Updating a missing task returns `404`; it does not create a task. Deleting a missing or
 already deleted task also returns `404`. Partial updates with `PATCH` are not supported.
 
-## Curl walkthrough
+## API examples
 
 These examples assume a fresh application. If the created id is not `1`, replace
 `1` in later commands with the id returned by your create request.
@@ -116,8 +110,8 @@ These examples assume a fresh application. If the created id is not `1`, replace
 curl -i -X POST http://localhost:8080/api/tasks \
   -H 'Content-Type: application/json' \
   -d '{
-    "title": "Learn Spring Boot",
-    "description": "Build the TaskFlow API",
+    "title": "Implement REST API endpoints",
+    "description": "Add task management features and validation",
     "status": "TODO",
     "priority": "HIGH",
     "dueDate": "2026-11-15"
@@ -130,8 +124,8 @@ Response: `201 Created`, with `Location: /api/tasks/1` and JSON like this
 ```json
 {
   "id": 1,
-  "title": "Learn Spring Boot",
-  "description": "Build the TaskFlow API",
+  "title": "Implement REST API endpoints",
+  "description": "Add task management features and validation",
   "status": "TODO",
   "priority": "HIGH",
   "dueDate": "2026-11-15",
@@ -158,8 +152,8 @@ Quote URLs containing `&` so the shell treats the whole URL as one argument.
 curl -i -X PUT http://localhost:8080/api/tasks/1 \
   -H 'Content-Type: application/json' \
   -d '{
-    "title": "Learn Spring Boot",
-    "description": "CRUD and tests finished",
+    "title": "Implement REST API endpoints",
+    "description": "Task management endpoints implemented and tested",
     "status": "DONE",
     "priority": "MEDIUM",
     "dueDate": "2026-11-15"
@@ -284,15 +278,12 @@ The PostgreSQL driver is already included. PostgreSQL data survives application 
 This project does not automatically load `.env` files; export variables in your shell
 or configure them in your IDE's run configuration. Do not commit real credentials.
 
-The `postgres` profile uses Hibernate's `ddl-auto=update` to create/update tables for
-learning. A production application would use explicit migrations, such as Flyway or
-Liquibase, and a more restrictive schema setting. Running without the `postgres`
-profile uses H2 again. If upgrading an existing PostgreSQL database from the earlier
-TaskFlow version, use a fresh development database or migrate existing rows: the new
-timestamps are required, and titles are now limited to 100 characters. Automatic
-schema updates are not a data migration tool.
+The `postgres` profile uses Hibernate's `ddl-auto=update` for development. Use explicit
+schema and data migrations, such as Flyway or Liquibase, in production. Automatic
+schema updates do not replace data migrations. Without the `postgres` profile,
+the application uses H2.
 
-## How the code fits together
+## Architecture and project structure
 
 ```text
 src/main/java/com/taskflow/api/
@@ -310,25 +301,17 @@ src/main/resources/
 
 src/test/java/com/taskflow/api/      Service, API, and OpenAPI tests
 src/test/resources/                 Isolated H2 test configuration
-INTERVIEW.md                        Short explanations and demo checklist
 ```
 
-Follow a request from `TaskController` to `TaskService` to `TaskRepository`.
-The controller deals with HTTP. The service chooses the operation and controls
-transactions. The repository reads and writes `Task` entities; Spring Data implements
-its query methods from their names.
+`TaskController` handles HTTP requests and validates request DTOs. `TaskService`
+coordinates operations and transaction boundaries. `TaskRepository` provides
+persistence through Spring Data JPA. Request and response DTOs define the API
+contract separately from the entity; `GlobalExceptionHandler` provides consistent errors.
 
-DTO means **Data Transfer Object**. The two DTO records describe JSON input and output
-without exposing the persistence entity directly. A Java record is a concise way to
-hold immutable data. `@Valid` checks the request's Jakarta Validation annotations
-before calling the service. `GlobalExceptionHandler` turns exceptions into HTTP errors.
 JPA lifecycle callbacks set the timestamps; updates are flushed before building the
 response so that `updatedAt` matches the stored value.
 
-The project uses constructor injection, ordinary getters/setters, and explicit mapping
-so that you can follow the code without Lombok, mapper libraries, or generic base services.
-
-For interview preparation, read [INTERVIEW.md](INTERVIEW.md).
+Dependencies use constructor injection, and DTO mapping is explicit.
 
 Useful references: [Spring Boot documentation](https://docs.spring.io/spring-boot/),
 [Spring Data JPA query methods](https://docs.spring.io/spring-data/jpa/reference/jpa/query-methods.html),

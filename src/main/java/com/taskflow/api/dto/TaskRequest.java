@@ -13,11 +13,11 @@ import java.time.LocalDate;
 public record TaskRequest(
         @NotBlank(message = "Title is required")
         @Size(min = 3, max = 100, message = "Title must be between 3 and 100 characters")
-        @Schema(example = "Prepare internship demo")
+        @Schema(example = "Implement REST API endpoints")
         String title,
 
         @Size(max = 2000, message = "Description must be at most 2000 characters")
-        @Schema(example = "Demonstrate CRUD, filtering, and validation")
+        @Schema(example = "Add task management features and validation")
         String description,
 
         @NotNull(message = "Status is required")

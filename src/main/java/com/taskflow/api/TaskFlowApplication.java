@@ -9,7 +9,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @OpenAPIDefinition(info = @Info(
         title = "TaskFlow API",
         version = "1.0",
-        description = "Create, track, and filter tasks. A simple Java backend learning project."
+        description = "REST API for creating, managing, and filtering tasks."
 ))
 public class TaskFlowApplication {
 
