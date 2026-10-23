@@ -1,9 +1,9 @@
-# TaskFlow API
+# TaskFlow
 
-A task management REST API built with Java and Spring Boot. Supports task CRUD,
-status and priority filters, optional due dates, and automatic timestamps.
-The API uses a Controller → Service → Repository architecture and includes
-interactive documentation through Swagger UI.
+A task management application with a responsive web dashboard and a Java Spring Boot
+REST API. Create, edit, organize, and complete tasks directly in your browser.
+The backend uses a Controller → Service → Repository architecture with validation,
+optional due dates, automatic timestamps, and interactive Swagger documentation.
 
 ## Tech stack
 
@@ -12,6 +12,7 @@ interactive documentation through Swagger UI.
 - Maven 3.9.11 through the included Maven Wrapper
 - Spring Web MVC, Spring Data JPA, and Jakarta Validation
 - H2 for immediate local use; an optional PostgreSQL profile
+- HTML5, CSS3, and vanilla JavaScript; no frontend dependencies or build step
 - Springdoc OpenAPI 2.8.17 for Swagger UI
 - JUnit 5.14.4, Mockito, and Spring MockMvc for tests
 
@@ -26,23 +27,30 @@ Clone the repository, then start the application. These commands work in Fish an
 ```sh
 git clone https://github.com/namantai/taskflow-api.git
 cd taskflow-api
-./mvnw spring-boot:run
+./mvnw spring-boot:run -Dspring-boot.run.arguments="--server.port=8081"
 ```
 
 On Windows, use `mvnw.cmd` instead (for example, `.\mvnw.cmd spring-boot:run` in PowerShell).
 The curl examples below also work in Fish, Bash, Git Bash, or WSL.
 
-The API is available at `http://localhost:8080/api/tasks`. To check it:
+Open the [dashboard](http://localhost:8081/) to use the full application.
+Spring Boot serves the frontend and API together; no separate frontend server is needed.
+
+- Dashboard: [http://localhost:8081/](http://localhost:8081/)
+- Swagger: [http://localhost:8081/swagger-ui.html](http://localhost:8081/swagger-ui.html)
+- REST API: [http://localhost:8081/api/tasks](http://localhost:8081/api/tasks)
+
+To check the API:
 
 ```bash
-curl -i http://localhost:8080/api/tasks
+curl -i http://localhost:8081/api/tasks
 ```
 
-An empty database returns `200 OK` with `[]`. There is no page at `/`.
+An empty database returns `200 OK` with `[]`; the dashboard shows an empty state.
 Stop the application with **Ctrl+C**.
 
 H2 runs in memory and starts empty. **All H2 data is lost when the application stops.**
-The H2 web console is not enabled. Use the API to inspect tasks.
+The H2 web console is not enabled. Use the dashboard or API to inspect tasks.
 
 The default configuration is in `src/main/resources/application.properties`:
 
@@ -53,11 +61,30 @@ The default configuration is in `src/main/resources/application.properties`:
 | Password | Empty |
 | Schema handling | `create-drop` (Hibernate creates tables on startup and drops them on shutdown) |
 
-If port 8080 is already in use:
+The commands use port **8081** to avoid conflicts with other local services.
+The backend default remains **8080**; omit the `server.port` argument to use it,
+or choose another available port. The dashboard uses relative URLs and works on either.
 
-```bash
-./mvnw spring-boot:run -Dspring-boot.run.arguments="--server.port=8081"
-```
+## Using the dashboard
+
+- Select **New Task**, enter a title, and choose a status and priority. New tasks
+  default to To Do and Medium. Description and due date are optional.
+- Select **Edit** on a card to update its details, or use the card’s status selector
+  to move it between To Do, In Progress, and Completed.
+- Combine the status tabs and priority filter, then search the results by title.
+  **Clear filters** appears when there are no matches.
+- Use the trash button to delete a task after confirmation. **Keep task** cancels.
+- Select **Refresh** to see changes made through Swagger, curl, or another browser.
+
+Summary cards always count all tasks, independent of active filters and search.
+Status and priority filters call the API; title search runs locally without requests
+on each keystroke. Forms show validation errors beside fields, and failed requests
+show a message with a retry option where appropriate.
+
+The frontend uses `fetch()` with relative `/api/tasks` paths. Creating uses POST,
+editing and status changes use PUT with every editable field, and deletion uses DELETE.
+Tasks are stored by the backend, never in browser storage. HTML, CSS, and JavaScript
+are served from Spring Boot’s `static` resource directory.
 
 ## Task fields
 
@@ -107,7 +134,7 @@ These examples assume a fresh application. If the created id is not `1`, replace
 ### Create a task
 
 ```bash
-curl -i -X POST http://localhost:8080/api/tasks \
+curl -i -X POST http://localhost:8081/api/tasks \
   -H 'Content-Type: application/json' \
   -d '{
     "title": "Implement REST API endpoints",
@@ -137,11 +164,11 @@ Response: `201 Created`, with `Location: /api/tasks/1` and JSON like this
 ### List, filter, and read
 
 ```bash
-curl -i http://localhost:8080/api/tasks
-curl -i 'http://localhost:8080/api/tasks?status=TODO'
-curl -i 'http://localhost:8080/api/tasks?priority=HIGH'
-curl -i 'http://localhost:8080/api/tasks?status=TODO&priority=HIGH'
-curl -i http://localhost:8080/api/tasks/1
+curl -i http://localhost:8081/api/tasks
+curl -i 'http://localhost:8081/api/tasks?status=TODO'
+curl -i 'http://localhost:8081/api/tasks?priority=HIGH'
+curl -i 'http://localhost:8081/api/tasks?status=TODO&priority=HIGH'
+curl -i http://localhost:8081/api/tasks/1
 ```
 
 Quote URLs containing `&` so the shell treats the whole URL as one argument.
@@ -149,7 +176,7 @@ Quote URLs containing `&` so the shell treats the whole URL as one argument.
 ### Update a task
 
 ```bash
-curl -i -X PUT http://localhost:8080/api/tasks/1 \
+curl -i -X PUT http://localhost:8081/api/tasks/1 \
   -H 'Content-Type: application/json' \
   -d '{
     "title": "Implement REST API endpoints",
@@ -163,7 +190,7 @@ curl -i -X PUT http://localhost:8080/api/tasks/1 \
 ### Delete a task
 
 ```bash
-curl -i -X DELETE http://localhost:8080/api/tasks/1
+curl -i -X DELETE http://localhost:8081/api/tasks/1
 ```
 
 Response: `204 No Content`. Reading the same task afterwards returns `404 Not Found`.
@@ -175,7 +202,7 @@ Errors use Spring's `ProblemDetail` JSON format with the content type
 mapping field names to messages.
 
 ```bash
-curl -i -X POST http://localhost:8080/api/tasks \
+curl -i -X POST http://localhost:8081/api/tasks \
   -H 'Content-Type: application/json' \
   -d '{"title":"   ","status":"TODO","priority":"HIGH"}'
 ```
@@ -207,13 +234,13 @@ Use `Content-Type: application/json` for both `POST` and `PUT`.
 
 ## Swagger / OpenAPI
 
-With the application running, open [Swagger UI](http://localhost:8080/swagger-ui.html).
+With the application running, open [Swagger UI](http://localhost:8081/swagger-ui.html).
 It redirects to `/swagger-ui/index.html`. Expand an operation, select **Try it out**,
 enter the fields, then select **Execute** to send a real request to the local API.
 The examples and enum choices are generated from the controller and DTOs.
 
-- UI: `http://localhost:8080/swagger-ui.html`
-- OpenAPI JSON: `http://localhost:8080/v3/api-docs`
+- UI: `http://localhost:8081/swagger-ui.html`
+- OpenAPI JSON: `http://localhost:8081/v3/api-docs`
 
 There are five operations across `/api/tasks` and `/api/tasks/{id}`. The list operation
 includes the optional `status` and `priority` parameters. POST documents `201` and
@@ -229,7 +256,7 @@ the `Location` header; DELETE documents `204` with no response body.
 ./mvnw clean verify
 
 # Start that JAR
-java -jar target/taskflow-0.0.1-SNAPSHOT.jar
+java -jar target/taskflow-0.0.1-SNAPSHOT.jar --server.port=8081
 ```
 
 - `TaskServiceTest` uses Mockito to test service behavior without starting Spring
@@ -238,6 +265,7 @@ java -jar target/taskflow-0.0.1-SNAPSHOT.jar
   test database and sends requests through MockMvc. It checks persistence, HTTP status
   codes, the `Location` header, filtering, validation boundaries, invalid requests,
   server-managed timestamps, due dates, and that a rejected update leaves stored data unchanged.
+- `DashboardIntegrationTest` checks the root welcome page and CSS/JavaScript resources.
 - `OpenApiIntegrationTest` checks the generated API paths, response codes, field
   constraints, enum filters, Swagger entry point, and UI resources.
 
@@ -262,7 +290,7 @@ Then, in **Fish**, set the connection details (replace the example password):
 set -gx DB_URL 'jdbc:postgresql://localhost:5432/taskflow'
 set -gx DB_USERNAME 'taskflow'
 set -gx DB_PASSWORD 'change-me'
-./mvnw spring-boot:run -Dspring-boot.run.profiles=postgres
+./mvnw spring-boot:run -Dspring-boot.run.profiles=postgres -Dspring-boot.run.arguments="--server.port=8081"
 ```
 
 In Bash or Zsh, use `export NAME='value'` instead of `set -gx NAME 'value'`.
@@ -270,7 +298,7 @@ In Bash or Zsh, use `export NAME='value'` instead of `set -gx NAME 'value'`.
 Or use the packaged JAR after exporting the same variables:
 
 ```bash
-java -jar target/taskflow-0.0.1-SNAPSHOT.jar --spring.profiles.active=postgres
+java -jar target/taskflow-0.0.1-SNAPSHOT.jar --spring.profiles.active=postgres --server.port=8081
 ```
 
 `DB_URL` and `DB_USERNAME` default to the values shown above; `DB_PASSWORD` is required.
@@ -297,9 +325,13 @@ src/main/java/com/taskflow/api/
 
 src/main/resources/
 ├── application.properties          Default H2 configuration
-└── application-postgres.properties Optional PostgreSQL configuration
+├── application-postgres.properties Optional PostgreSQL configuration
+└── static/
+    ├── index.html                  Dashboard, forms, and dialogs
+    ├── css/style.css               Responsive layout and visual styles
+    └── js/app.js                   UI events, rendering, and API requests
 
-src/test/java/com/taskflow/api/      Service, API, and OpenAPI tests
+src/test/java/com/taskflow/api/      Service, API, OpenAPI, and dashboard tests
 src/test/resources/                 Isolated H2 test configuration
 ```
 
