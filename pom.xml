@@ -7,11 +7,11 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.1</version>
+        <version>3.5.16</version>
         <relativePath/>
     </parent>
 
-    <groupId>com.example</groupId>
+    <groupId>com.taskflow</groupId>
     <artifactId>taskflow</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>TaskFlow</name>
@@ -19,12 +19,14 @@
 
     <properties>
         <java.version>21</java.version>
+        <!-- Use JUnit 5 consistently across Jupiter and the test platform. -->
+        <junit-jupiter.version>5.14.4</junit-jupiter.version>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webmvc</artifactId>
+            <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -46,7 +48,7 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

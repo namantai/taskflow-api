@@ -1,12 +1,12 @@
-package com.example.taskflow.service;
+package com.taskflow.api.service;
 
-import com.example.taskflow.dto.TaskRequest;
-import com.example.taskflow.dto.TaskResponse;
-import com.example.taskflow.exception.TaskNotFoundException;
-import com.example.taskflow.model.Task;
-import com.example.taskflow.model.TaskPriority;
-import com.example.taskflow.model.TaskStatus;
-import com.example.taskflow.repository.TaskRepository;
+import com.taskflow.api.dto.TaskRequest;
+import com.taskflow.api.dto.TaskResponse;
+import com.taskflow.api.exception.TaskNotFoundException;
+import com.taskflow.api.model.Task;
+import com.taskflow.api.model.TaskPriority;
+import com.taskflow.api.model.TaskStatus;
+import com.taskflow.api.repository.TaskRepository;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,7 +43,7 @@ public class TaskService {
 
     @Transactional
     public TaskResponse createTask(TaskRequest request) {
-        Task task = new Task(request.title(), request.description(), request.status(), request.priority());
+        Task task = new Task(request.title(), request.description(), request.status(), request.priority(), request.dueDate());
         return TaskResponse.from(taskRepository.save(task));
     }
 
@@ -54,7 +54,9 @@ public class TaskService {
         task.setDescription(request.description());
         task.setStatus(request.status());
         task.setPriority(request.priority());
-        return TaskResponse.from(taskRepository.save(task));
+        task.setDueDate(request.dueDate());
+        // Flush before mapping so the response includes the timestamp set by @PreUpdate.
+        return TaskResponse.from(taskRepository.saveAndFlush(task));
     }
 
     @Transactional

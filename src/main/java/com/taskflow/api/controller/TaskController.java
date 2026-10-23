@@ -1,10 +1,10 @@
-package com.example.taskflow.controller;
+package com.taskflow.api.controller;
 
-import com.example.taskflow.dto.TaskRequest;
-import com.example.taskflow.dto.TaskResponse;
-import com.example.taskflow.model.TaskPriority;
-import com.example.taskflow.model.TaskStatus;
-import com.example.taskflow.service.TaskService;
+import com.taskflow.api.dto.TaskRequest;
+import com.taskflow.api.dto.TaskResponse;
+import com.taskflow.api.model.TaskPriority;
+import com.taskflow.api.model.TaskStatus;
+import com.taskflow.api.service.TaskService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;

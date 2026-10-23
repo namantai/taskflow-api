@@ -1,12 +1,12 @@
-package com.example.taskflow.service;
+package com.taskflow.api.service;
 
-import com.example.taskflow.dto.TaskRequest;
-import com.example.taskflow.dto.TaskResponse;
-import com.example.taskflow.exception.TaskNotFoundException;
-import com.example.taskflow.model.Task;
-import com.example.taskflow.model.TaskPriority;
-import com.example.taskflow.model.TaskStatus;
-import com.example.taskflow.repository.TaskRepository;
+import com.taskflow.api.dto.TaskRequest;
+import com.taskflow.api.dto.TaskResponse;
+import com.taskflow.api.exception.TaskNotFoundException;
+import com.taskflow.api.model.Task;
+import com.taskflow.api.model.TaskPriority;
+import com.taskflow.api.model.TaskStatus;
+import com.taskflow.api.repository.TaskRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,7 +37,8 @@ class TaskServiceTest {
 
     @Test
     void createTaskSavesTheRequestedFields() {
-        TaskRequest request = new TaskRequest("Learn JPA", "Read about entities", TaskStatus.TODO, TaskPriority.HIGH);
+        LocalDate dueDate = LocalDate.of(2026, 11, 15);
+        TaskRequest request = new TaskRequest("Learn JPA", "Read about entities", TaskStatus.TODO, TaskPriority.HIGH, dueDate);
         when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         TaskResponse response = taskService.createTask(request);
@@ -49,6 +51,7 @@ class TaskServiceTest {
         assertThat(saved.getDescription()).isEqualTo("Read about entities");
         assertThat(saved.getStatus()).isEqualTo(TaskStatus.TODO);
         assertThat(saved.getPriority()).isEqualTo(TaskPriority.HIGH);
+        assertThat(saved.getDueDate()).isEqualTo(dueDate);
         assertThat(response).isEqualTo(TaskResponse.from(saved));
     }
 
@@ -106,9 +109,9 @@ class TaskServiceTest {
     @Test
     void updateTaskReplacesAllEditableFields() {
         Task task = exampleTask();
-        TaskRequest request = new TaskRequest("Finished", null, TaskStatus.DONE, TaskPriority.LOW);
+        TaskRequest request = new TaskRequest("Finished", null, TaskStatus.DONE, TaskPriority.LOW, null);
         when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
-        when(taskRepository.save(task)).thenReturn(task);
+        when(taskRepository.saveAndFlush(task)).thenReturn(task);
 
         TaskResponse response = taskService.updateTask(1L, request);
 
@@ -116,17 +119,19 @@ class TaskServiceTest {
         assertThat(response.description()).isNull();
         assertThat(response.status()).isEqualTo(TaskStatus.DONE);
         assertThat(response.priority()).isEqualTo(TaskPriority.LOW);
-        verify(taskRepository).save(task);
+        assertThat(response.dueDate()).isNull();
+        verify(taskRepository).saveAndFlush(task);
     }
 
     @Test
     void updateTaskDoesNotCreateAMissingTask() {
         when(taskRepository.findById(99L)).thenReturn(Optional.empty());
-        TaskRequest request = new TaskRequest("Missing", null, TaskStatus.TODO, TaskPriority.LOW);
+        TaskRequest request = new TaskRequest("Missing", null, TaskStatus.TODO, TaskPriority.LOW, null);
 
         assertThatThrownBy(() -> taskService.updateTask(99L, request))
                 .isInstanceOf(TaskNotFoundException.class);
         verify(taskRepository, never()).save(any(Task.class));
+        verify(taskRepository, never()).saveAndFlush(any(Task.class));
     }
 
     @Test
@@ -149,6 +154,6 @@ class TaskServiceTest {
     }
 
     private Task exampleTask() {
-        return new Task("Learn Spring", "Build a REST API", TaskStatus.TODO, TaskPriority.HIGH);
+        return new Task("Learn Spring", "Build a REST API", TaskStatus.TODO, TaskPriority.HIGH, LocalDate.of(2026, 11, 15));
     }
 }

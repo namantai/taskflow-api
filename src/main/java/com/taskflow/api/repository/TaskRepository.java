@@ -1,8 +1,8 @@
-package com.example.taskflow.repository;
+package com.taskflow.api.repository;
 
-import com.example.taskflow.model.Task;
-import com.example.taskflow.model.TaskPriority;
-import com.example.taskflow.model.TaskStatus;
+import com.taskflow.api.model.Task;
+import com.taskflow.api.model.TaskPriority;
+import com.taskflow.api.model.TaskStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

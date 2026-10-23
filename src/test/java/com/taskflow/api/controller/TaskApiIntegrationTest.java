@@ -1,10 +1,10 @@
-package com.example.taskflow.controller;
+package com.taskflow.api.controller;
 
-import com.example.taskflow.dto.TaskRequest;
-import com.example.taskflow.model.Task;
-import com.example.taskflow.model.TaskPriority;
-import com.example.taskflow.model.TaskStatus;
-import com.example.taskflow.repository.TaskRepository;
+import com.taskflow.api.dto.TaskRequest;
+import com.taskflow.api.model.Task;
+import com.taskflow.api.model.TaskPriority;
+import com.taskflow.api.model.TaskStatus;
+import com.taskflow.api.repository.TaskRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -14,12 +14,14 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -54,7 +56,8 @@ class TaskApiIntegrationTest {
 
     @Test
     void taskCanBeCreatedReadUpdatedAndDeleted() throws Exception {
-        TaskRequest request = new TaskRequest("Learn Spring", "Build TaskFlow", TaskStatus.TODO, TaskPriority.HIGH);
+        LocalDate dueDate = LocalDate.of(2026, 11, 15);
+        TaskRequest request = new TaskRequest("Learn Spring", "Build TaskFlow", TaskStatus.TODO, TaskPriority.HIGH, dueDate);
 
         String body = mockMvc.perform(post("/api/tasks")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -65,16 +68,23 @@ class TaskApiIntegrationTest {
                 .andExpect(jsonPath("$.description").value("Build TaskFlow"))
                 .andExpect(jsonPath("$.status").value("TODO"))
                 .andExpect(jsonPath("$.priority").value("HIGH"))
+                .andExpect(jsonPath("$.dueDate").value("2026-11-15"))
+                .andExpect(jsonPath("$.createdAt").isString())
+                .andExpect(jsonPath("$.updatedAt").isString())
                 .andReturn().getResponse().getContentAsString();
         long id = objectMapper.readTree(body).path("id").longValue();
-        assertThat(taskRepository.findById(id)).isPresent();
+        Task created = taskRepository.findById(id).orElseThrow();
+        Instant createdAt = Instant.parse(objectMapper.readTree(body).path("createdAt").asText());
+        assertThat(created.getCreatedAt()).isEqualTo(createdAt);
+        assertThat(created.getUpdatedAt()).isEqualTo(createdAt);
+        assertThat(created.getDueDate()).isEqualTo(dueDate);
 
         mockMvc.perform(get("/api/tasks/{id}", id))
                 .andExpect(status().isOk())
                 .andExpect(content().json(body));
 
-        TaskRequest update = new TaskRequest("Finished project", null, TaskStatus.DONE, TaskPriority.LOW);
-        mockMvc.perform(put("/api/tasks/{id}", id)
+        TaskRequest update = new TaskRequest("Finished project", null, TaskStatus.DONE, TaskPriority.LOW, null);
+        String updatedBody = mockMvc.perform(put("/api/tasks/{id}", id)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(update)))
                 .andExpect(status().isOk())
@@ -82,12 +92,22 @@ class TaskApiIntegrationTest {
                 .andExpect(jsonPath("$.title").value("Finished project"))
                 .andExpect(jsonPath("$.description").isEmpty())
                 .andExpect(jsonPath("$.status").value("DONE"))
-                .andExpect(jsonPath("$.priority").value("LOW"));
+                .andExpect(jsonPath("$.priority").value("LOW"))
+                .andExpect(jsonPath("$.dueDate").isEmpty())
+                .andReturn().getResponse().getContentAsString();
         Task persisted = taskRepository.findById(id).orElseThrow();
         assertThat(persisted.getTitle()).isEqualTo("Finished project");
         assertThat(persisted.getDescription()).isNull();
         assertThat(persisted.getStatus()).isEqualTo(TaskStatus.DONE);
         assertThat(persisted.getPriority()).isEqualTo(TaskPriority.LOW);
+        assertThat(persisted.getDueDate()).isNull();
+        assertThat(persisted.getCreatedAt()).isEqualTo(createdAt);
+        assertThat(persisted.getUpdatedAt()).isAfter(createdAt);
+        assertThat(Instant.parse(objectMapper.readTree(updatedBody).path("updatedAt").asText()))
+                .isEqualTo(persisted.getUpdatedAt());
+        mockMvc.perform(get("/api/tasks/{id}", id))
+                .andExpect(status().isOk())
+                .andExpect(content().json(updatedBody));
 
         mockMvc.perform(delete("/api/tasks/{id}", id))
                 .andExpect(status().isNoContent())
@@ -105,6 +125,7 @@ class TaskApiIntegrationTest {
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.description").isEmpty())
+                .andExpect(jsonPath("$.dueDate").isEmpty())
                 .andReturn();
         long id = objectMapper.readTree(result.getResponse().getContentAsString()).path("id").longValue();
         assertThat(result.getResponse().getHeader("Location")).isEqualTo("/api/tasks/" + id);
@@ -141,10 +162,10 @@ class TaskApiIntegrationTest {
         var tasks = objectMapper.readTree(result.getResponse().getContentAsString());
         for (var task : tasks) {
             if (query.contains("status=TODO")) {
-                assertThat(task.path("status").asString()).isEqualTo("TODO");
+                assertThat(task.path("status").asText()).isEqualTo("TODO");
             }
             if (query.contains("priority=HIGH")) {
-                assertThat(task.path("priority").asString()).isEqualTo("HIGH");
+                assertThat(task.path("priority").asText()).isEqualTo("HIGH");
             }
         }
     }
@@ -190,18 +211,20 @@ class TaskApiIntegrationTest {
 
     static Stream<Arguments> invalidRequests() {
         return Stream.of(
-                Arguments.of(new TaskRequest(null, null, TaskStatus.TODO, TaskPriority.LOW), "title"),
-                Arguments.of(new TaskRequest("   ", null, TaskStatus.TODO, TaskPriority.LOW), "title"),
-                Arguments.of(new TaskRequest("x".repeat(201), null, TaskStatus.TODO, TaskPriority.LOW), "title"),
-                Arguments.of(new TaskRequest("Valid", "x".repeat(2001), TaskStatus.TODO, TaskPriority.LOW), "description"),
-                Arguments.of(new TaskRequest("Valid", null, null, TaskPriority.LOW), "status"),
-                Arguments.of(new TaskRequest("Valid", null, TaskStatus.TODO, null), "priority")
+                Arguments.of(new TaskRequest(null, null, TaskStatus.TODO, TaskPriority.LOW, null), "title"),
+                Arguments.of(new TaskRequest("   ", null, TaskStatus.TODO, TaskPriority.LOW, null), "title"),
+                Arguments.of(new TaskRequest("ab", null, TaskStatus.TODO, TaskPriority.LOW, null), "title"),
+                Arguments.of(new TaskRequest("x".repeat(101), null, TaskStatus.TODO, TaskPriority.LOW, null), "title"),
+                Arguments.of(new TaskRequest("Valid", "x".repeat(2001), TaskStatus.TODO, TaskPriority.LOW, null), "description"),
+                Arguments.of(new TaskRequest("Valid", null, null, TaskPriority.LOW, null), "status"),
+                Arguments.of(new TaskRequest("Valid", null, TaskStatus.TODO, null, null), "priority")
         );
     }
 
-    @Test
-    void maximumFieldLengthsAreAccepted() throws Exception {
-        TaskRequest request = new TaskRequest("x".repeat(200), "x".repeat(2000), TaskStatus.TODO, TaskPriority.LOW);
+    @ParameterizedTest
+    @ValueSource(ints = {3, 100})
+    void titleBoundariesAndMaximumDescriptionLengthAreAccepted(int titleLength) throws Exception {
+        TaskRequest request = new TaskRequest("x".repeat(titleLength), "x".repeat(2000), TaskStatus.TODO, TaskPriority.LOW, null);
         mockMvc.perform(post("/api/tasks")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -215,7 +238,7 @@ class TaskApiIntegrationTest {
         mockMvc.perform(put("/api/tasks/{id}", task.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"title":" ","status":"DONE","priority":"LOW"}
+                                {"title":"   ","status":"DONE","priority":"LOW"}
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.title").value("Title is required"));
@@ -223,6 +246,7 @@ class TaskApiIntegrationTest {
         assertThat(unchanged.getTitle()).isEqualTo("Keep this title");
         assertThat(unchanged.getStatus()).isEqualTo(TaskStatus.TODO);
         assertThat(unchanged.getPriority()).isEqualTo(TaskPriority.HIGH);
+        assertThat(unchanged.getUpdatedAt()).isEqualTo(task.getUpdatedAt());
     }
 
     @ParameterizedTest
@@ -261,7 +285,51 @@ class TaskApiIntegrationTest {
                 .andExpect(jsonPath("$.status").value(415));
     }
 
+    @Test
+    void updateCanSetANewDueDate() throws Exception {
+        Task task = saveTask("Plan the demo", TaskStatus.TODO, TaskPriority.HIGH);
+        mockMvc.perform(put("/api/tasks/{id}", task.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"Plan the demo","status":"IN_PROGRESS","priority":"HIGH","dueDate":"2026-12-01"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dueDate").value("2026-12-01"));
+        assertThat(taskRepository.findById(task.getId()).orElseThrow().getDueDate())
+                .isEqualTo(LocalDate.of(2026, 12, 1));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"2026-02-30", "01-12-2026", "not-a-date"})
+    void invalidDueDatesReturn400(String dueDate) throws Exception {
+        mockMvc.perform(post("/api/tasks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"Plan the demo","status":"TODO","priority":"HIGH","dueDate":"%s"}
+                                """.formatted(dueDate)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+        assertThat(taskRepository.count()).isZero();
+    }
+
+    @Test
+    void clientsCannotSetServerManagedFields() throws Exception {
+        String body = mockMvc.perform(post("/api/tasks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"id":999999,"title":"Server owns timestamps","status":"TODO","priority":"LOW",
+                                 "createdAt":"2000-01-01T00:00:00Z","updatedAt":"2000-01-01T00:00:00Z"}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        var response = objectMapper.readTree(body);
+        assertThat(response.path("id").longValue()).isNotEqualTo(999999L);
+        assertThat(Instant.parse(response.path("createdAt").asText()))
+                .isAfter(Instant.parse("2000-01-01T00:00:00Z"));
+        assertThat(response.path("updatedAt").asText()).isEqualTo(response.path("createdAt").asText());
+    }
+
     private Task saveTask(String title, TaskStatus status, TaskPriority priority) {
-        return taskRepository.save(new Task(title, null, status, priority));
+        return taskRepository.save(new Task(title, null, status, priority, null));
     }
 }

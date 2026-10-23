@@ -1,4 +1,4 @@
-package com.example.taskflow.exception;
+package com.taskflow.api.exception;
 
 public class TaskNotFoundException extends RuntimeException {
 

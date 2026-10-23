@@ -1,4 +1,4 @@
-package com.example.taskflow.exception;
+package com.taskflow.api.exception;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +47,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HttpStatusCode status, WebRequest request) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status,
                 "Provide a valid JSON body. Status must be TODO, IN_PROGRESS, or DONE; "
-                        + "priority must be LOW, MEDIUM, or HIGH.");
+                        + "priority must be LOW, MEDIUM, or HIGH. Use YYYY-MM-DD for dueDate.");
         return handleExceptionInternal(exception, problem, headers, status, request);
     }
 
