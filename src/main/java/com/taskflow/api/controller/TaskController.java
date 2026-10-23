@@ -7,6 +7,7 @@ import com.taskflow.api.model.TaskStatus;
 import com.taskflow.api.service.TaskService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.headers.Header;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -47,8 +48,8 @@ public class TaskController {
 
     @GetMapping
     @Operation(summary = "List tasks", description = "Optional filters are combined with AND. Results are ordered by id.")
-    @ApiResponse(responseCode = "200", description = "Tasks returned", useReturnTypeSchema = true,
-            content = @Content(mediaType = "application/json"))
+    @ApiResponse(responseCode = "200", description = "Tasks returned",
+            content = @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = TaskResponse.class))))
     public List<TaskResponse> getTasks(
             @RequestParam(required = false) TaskStatus status,
             @RequestParam(required = false) TaskPriority priority) {
@@ -57,8 +58,8 @@ public class TaskController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get a task by id")
-    @ApiResponse(responseCode = "200", description = "Task returned", useReturnTypeSchema = true,
-            content = @Content(mediaType = "application/json"))
+    @ApiResponse(responseCode = "200", description = "Task returned",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TaskResponse.class)))
     @ApiResponse(responseCode = "404", description = "Task not found",
             content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
     public TaskResponse getTask(@PathVariable Long id) {
@@ -77,8 +78,8 @@ public class TaskController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Replace a task", description = "Send all required fields. Omitted description and dueDate are cleared.")
-    @ApiResponse(responseCode = "200", description = "Task updated", useReturnTypeSchema = true,
-            content = @Content(mediaType = "application/json"))
+    @ApiResponse(responseCode = "200", description = "Task updated",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TaskResponse.class)))
     @ApiResponse(responseCode = "404", description = "Task not found",
             content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
     public TaskResponse updateTask(@PathVariable Long id, @Valid @RequestBody TaskRequest request) {

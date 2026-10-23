@@ -44,6 +44,11 @@ class OpenApiIntegrationTest {
         assertThat(collection.size()).isEqualTo(2);
         assertThat(item.size()).isEqualTo(3);
         assertThat(collection.path("get").path("responses").has("200")).isTrue();
+        var listContent = collection.path("get").path("responses").path("200").path("content");
+        assertThat(listContent.size()).isEqualTo(1);
+        var listSchema = listContent.path("application/json").path("schema");
+        assertThat(listSchema.path("type").asText()).isEqualTo("array");
+        assertThat(listSchema.path("items").path("$ref").asText()).isEqualTo("#/components/schemas/TaskResponse");
         assertThat(collection.path("post").path("responses").has("201")).isTrue();
         assertThat(collection.path("post").path("responses").has("200")).isFalse();
         assertThat(collection.path("post").path("responses").path("201").path("headers").has("Location")).isTrue();
@@ -52,6 +57,12 @@ class OpenApiIntegrationTest {
         }
         assertThat(item.path("get").path("responses").has("200")).isTrue();
         assertThat(item.path("put").path("responses").has("200")).isTrue();
+        for (String method : Set.of("get", "put")) {
+            var taskContent = item.path(method).path("responses").path("200").path("content");
+            assertThat(taskContent.size()).isEqualTo(1);
+            assertThat(taskContent.path("application/json").path("schema").path("$ref").asText())
+                    .isEqualTo("#/components/schemas/TaskResponse");
+        }
         assertThat(item.path("delete").path("responses").has("204")).isTrue();
         assertThat(item.path("delete").path("responses").path("204").has("content")).isFalse();
 
